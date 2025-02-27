@@ -43,7 +43,17 @@ class Authenticator(common.Plugin, interfaces.Authenticator):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.r53 = boto3.client("route53")
+        if os.environ.get('CUSTOM_AWS_ACCESS_KEY_ID') and os.environ.get('CUSTOM_AWS_SECRET_ACCESS_KEY'):
+            from boto3.session import Session
+            session = Session(region_name=os.environ.get('CUSTOM_AWS_REGION','us-east-1'))
+            self.r53 = session.client(
+                "route53",
+                aws_access_key_id=os.environ['CUSTOM_AWS_ACCESS_KEY_ID'],
+                aws_secret_access_key=os.environ['CUSTOM_AWS_SECRET_ACCESS_KEY']
+            )
+            print(f'USING CUSTOM ACCESS/SECRET KEYS!!')
+        else:
+            self.r53 = boto3.client("route53")
         self._attempt_cleanup = False
         self._resource_records: DefaultDict[str, List[Dict[str, str]]] = \
             collections.defaultdict(list)
