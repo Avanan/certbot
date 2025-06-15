@@ -1,0 +1,41 @@
+name: SonarQube
+on:
+  push:
+    branches-ignore:
+      - 'bug*/**/*'
+      - 'feat*/**/*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on:
+      - codebuild-HEC-Sonar-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: generate sonar-project.properties
+        env:
+          REPOSITORY: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          org_name=$(echo "$REPOSITORY" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
+          repo_name=$(echo "$REPOSITORY" | cut -d'/' -f2)
+          echo "sonar.projectKey=${org_name}-${repo_name}" > sonar-project.properties
+          echo "sonar.projectCreation.mainBranch=$DEFAULT_BRANCH" >> sonar-project.properties
+          echo "sonar.ci.autoconfig.disabled=true" >> sonar-project.properties
+        
+
+      - uses: SonarSource/sonarqube-scan-action@2500896589ef8f7247069a56136f8dc177c27ccf
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # - uses: SonarSource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
